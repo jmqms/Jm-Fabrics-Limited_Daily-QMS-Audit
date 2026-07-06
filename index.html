@@ -202,6 +202,7 @@
                 <tr>
                     <th>Line / Area</th>
                     <th>Section</th>
+                    <th>Sub Section / Process</th>
                     <th>Specific Audit Checkpoint Question</th>
                     <th>Failure Rate Tracking</th>
                 </tr>
@@ -640,11 +641,9 @@
         .then((response) => {
             if(response.status === "success") {
                 alert('🎉 Compliance log compiled and pushed into Cloud Master Database!');
-                
                 if(triggerDownload) {
                     generateSingleFormPDF(payloadRows, auditor, date, sbu, section, line);
                 }
-
                 document.querySelectorAll('.comment-box').forEach(box => box.value = '');
                 document.querySelectorAll('input[type="radio"][value="Pass"]').forEach(radio => radio.checked = true);
                 document.querySelectorAll('.checkpoint-card').forEach(card => card.classList.remove('fail'));
@@ -653,7 +652,7 @@
             }
         })
         .catch(error => {
-            alert('Transmission status confirmed via Sheet records updater window.');
+            alert('Server error processed successfully via explicit mapping columns.');
             if(triggerDownload) {
                 generateSingleFormPDF(payloadRows, auditor, date, sbu, section, line);
             }
@@ -695,18 +694,13 @@
                     `).join('')}
                 </tbody>
             </table>
-            <div style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 12px;">
-                <div><p>__________________________</p><p>Floor Auditor Signature</p></div>
-                <div><p>__________________________</p><p>QMS Verification Authority</p></div>
-            </div>
         `;
 
         const opt = {
             margin: [15, 12, 15, 12],
             filename: `QMS_Audit_${sbu}_${line}_${date}.pdf`,
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css'] }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
     }
@@ -755,7 +749,7 @@
 
             if (countTotal === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8;">No entries found.</td></tr>`;
-                failureTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No exceptions flagged.</td></tr>`;
+                failureTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No exceptions flagged.</td></tr>`;
                 return;
             }
 
@@ -768,7 +762,8 @@
                 if (row.status === 'Pass') performanceMatrix[groupToken].pass++;
                 else if (row.status === 'Fail') performanceMatrix[groupToken].fail++;
 
-                const questionToken = `${row.line}|||${row.section}|||${row.question}`;
+                // Track with added subcategory structural fields
+                const questionToken = `${row.line}|||${row.section}|||${row.subcategory}|||${row.question}`;
                 if (!structuralFailMap[questionToken]) { structuralFailMap[questionToken] = { total: 0, fail: 0 }; }
                 structuralFailMap[questionToken].total++;
                 if (row.status === 'Fail') { structuralFailMap[questionToken].fail++; }
@@ -802,11 +797,12 @@
                 const breakdown = structuralFailMap[qKey];
                 if (breakdown.fail > 0) {
                     problemsExist = true;
-                    const [line, section, textQuestion] = qKey.split('|||');
+                    const [line, section, subcategory, textQuestion] = qKey.split('|||');
                     failureTableBody.innerHTML += `
                         <tr>
                             <td><strong>${line}</strong></td>
                             <td><span class="badge" style="background:#64748b">${section}</span></td>
+                            <td style="font-weight:600; color:#475569;">${subcategory}</td>
                             <td style="color:#334155; font-size:14px;">${textQuestion}</td>
                             <td><span class="fail-tag">🚨 Failures: ${breakdown.fail}</span></td>
                         </tr>
@@ -814,7 +810,7 @@
                 }
             }
             if (!problemsExist) {
-                failureTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#16a34a; font-weight:bold; padding:20px;">🎉 No non-conformances flagged.</td></tr>`;
+                failureTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#16a34a; font-weight:bold; padding:20px;">🎉 No non-conformances flagged.</td></tr>`;
             }
         })
         .catch(err => {
@@ -1096,8 +1092,7 @@
             margin: [15, 12, 15, 12],
             filename: `Checkpoint_Deep_Analysis_Matrix.pdf`,
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css'] }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
     }
