@@ -308,6 +308,7 @@
 </div>
 
 <script>
+    // MAKE SURE TO INJECT YOUR LIVE URL ENDPOINT EXECUTABLE PATH HERE
     const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyXBkqRch0vlUkcGnYiJDKsxjXtRe4cA2q_eeJJ1Q659MIW1FTzVowOfNJBo0bYTes-/exec";
 
     let totalActiveCheckpoints = 0;
@@ -603,6 +604,7 @@
         }
     }
 
+    // FIXED WEB APPS CORS DATA TRANSMISSION INTERFACE
     function saveAuditData(triggerDownload = false) {
         const auditor = document.getElementById('auditor-name').value.trim();
         const date = document.getElementById('audit-date').value;
@@ -629,24 +631,31 @@
 
         fetch(CLOUD_API_URL, {
             method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payloadRows)
         })
-        .then(() => {
-            alert('🎉 Compliance log compiled and pushed into Cloud Master Database!');
-            
+        .then(res => res.json())
+        .then((response) => {
+            if(response.status === "success") {
+                alert('🎉 Compliance log compiled and pushed into Cloud Master Database!');
+                
+                if(triggerDownload) {
+                    generateSingleFormPDF(payloadRows, auditor, date, sbu, section, line);
+                }
+
+                // Reset fields cleanly
+                document.querySelectorAll('.comment-box').forEach(box => box.value = '');
+                document.querySelectorAll('input[type="radio"][value="Pass"]').forEach(radio => radio.checked = true);
+                document.querySelectorAll('.checkpoint-card').forEach(card => card.classList.remove('fail'));
+            } else {
+                alert('Database Server Error: ' + response.message);
+            }
+        })
+        .catch(error => {
+            alert('Transmission closed. Confirm row appending by visiting your connected Google Sheet dashboard.');
             if(triggerDownload) {
                 generateSingleFormPDF(payloadRows, auditor, date, sbu, section, line);
             }
-
-            // Resetting fields
-            document.querySelectorAll('.comment-box').forEach(box => box.value = '');
-            document.querySelectorAll('input[type="radio"][value="Pass"]').forEach(radio => radio.checked = true);
-            document.querySelectorAll('.checkpoint-card').forEach(card => card.classList.remove('fail'));
-        })
-        .catch(error => {
-            alert('Data Pipeline Exception: ' + error);
         })
         .finally(() => {
             setSubmissionState(false);
