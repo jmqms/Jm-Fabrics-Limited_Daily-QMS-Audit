@@ -19,7 +19,7 @@
             --border: #cbd5e1;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
-        .container { max-width: 1150px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         .header-banner { border-bottom: 3px double var(--border); padding-bottom: 15px; margin-bottom: 25px; text-align: center; }
         .header-banner h1 { margin: 0; color: var(--text-dark); font-size: 28px; font-weight: 800; letter-spacing: 0.5px; }
         .header-banner p { margin: 5px 0 0 0; color: var(--text-muted); font-weight: 600; font-size: 16px; }
@@ -297,6 +297,7 @@
                     <th>SBU</th>
                     <th>Line / Area</th>
                     <th>Section</th>
+                    <th>Sub Section / Process</th>
                     <th>Checkpoint Question</th>
                     <th>Status</th>
                     <th>Findings / Comments</th>
@@ -308,12 +309,10 @@
 </div>
 
 <script>
-    // MAKE SURE TO INJECT YOUR LIVE URL ENDPOINT EXECUTABLE PATH HERE
     const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyXBkqRch0vlUkcGnYiJDKsxjXtRe4cA2q_eeJJ1Q659MIW1FTzVowOfNJBo0bYTes-/exec";
 
     let totalActiveCheckpoints = 0;
 
-    // Default Init Elements
     document.getElementById('audit-date').valueAsDate = new Date();
     document.getElementById('bulk-download-date').valueAsDate = new Date();
     
@@ -568,7 +567,7 @@
             
             checkpointsDatabase[section][category].forEach(question => {
                 area.innerHTML += `
-                    <div class="checkpoint-card" id="card-${index}">
+                    <div class="checkpoint-card" id="card-${index}" data-subcategory="${category}">
                         <div style="font-weight:600; font-size:15px;" id="q-${index}">${question}</div>
                         <div class="radio-group">
                             <label class="radio-label"><input type="radio" name="cp-${index}" value="Pass" checked onclick="toggleCard(${index}, 'Pass')"> Pass</label>
@@ -604,7 +603,6 @@
         }
     }
 
-    // FIXED WEB APPS CORS DATA TRANSMISSION INTERFACE
     function saveAuditData(triggerDownload = false) {
         const auditor = document.getElementById('auditor-name').value.trim();
         const date = document.getElementById('audit-date').value;
@@ -618,13 +616,16 @@
 
         let payloadRows = [];
         for (let i = 1; i <= totalActiveCheckpoints; i++) {
+            const cardEl = document.getElementById(`card-${i}`);
             const questionEl = document.getElementById(`q-${i}`);
-            if(!questionEl) continue;
+            if(!questionEl || !cardEl) continue;
+            
             const question = questionEl.innerText || questionEl.textContent;
+            const subcategory = cardEl.getAttribute('data-subcategory') || '';
             const status = document.querySelector(`input[name="cp-${i}"]:checked`).value;
             const comment = document.getElementById(`comment-${i}`).value.trim();
             
-            payloadRows.push({ date, auditor, sbu, section, line, question, status, comment });
+            payloadRows.push({ date, auditor, sbu, section, subcategory, line, question, status, comment });
         }
 
         setSubmissionState(true);
@@ -643,7 +644,6 @@
                     generateSingleFormPDF(payloadRows, auditor, date, sbu, section, line);
                 }
 
-                // Reset fields cleanly
                 document.querySelectorAll('.comment-box').forEach(box => box.value = '');
                 document.querySelectorAll('input[type="radio"][value="Pass"]').forEach(radio => radio.checked = true);
                 document.querySelectorAll('.checkpoint-card').forEach(card => card.classList.remove('fail'));
@@ -677,14 +677,16 @@
             <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 15px;">
                 <thead>
                     <tr style="background: #f2f2f2;">
-                        <th style="border: 1px solid #ddd; padding: 8px; width: 60%;">Audit Verification Checkpoint Question</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 15%;">Status</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; width: 20%;">Sub Section</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; width: 45%;">Audit Verification Checkpoint Question</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 10%;">Status</th>
                         <th style="border: 1px solid #ddd; padding: 8px; width: 25%;">Specific Remarks/Findings</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${rows.map(r => `
                         <tr>
+                            <td style="border: 1px solid #ddd; padding: 7px; font-weight: bold; color: #475569;">${r.subcategory || '-'}</td>
                             <td style="border: 1px solid #ddd; padding: 7px;">${r.question}</td>
                             <td style="border: 1px solid #ddd; padding: 7px; text-align: center; font-weight: bold; color: ${r.status === 'Pass' ? 'green' : (r.status === 'Fail' ? 'red' : '#666')}">${r.status}</td>
                             <td style="border: 1px solid #ddd; padding: 7px; font-style: italic; color: #dc2626;">${r.comment || '-'}</td>
@@ -721,7 +723,7 @@
         fetch(CLOUD_API_URL)
         .then(res => res.json())
         .then(dataStream => {
-            if(!Array.isArray(dataStream)) { throw new Error("Invalid response format received from App Engine."); }
+            if(!Array.isArray(dataStream)) { throw new Error("Invalid format."); }
             
             const startRange = startDateVal ? new Date(startDateVal) : null;
             const endRange = endDateVal ? new Date(endDateVal) : null;
@@ -821,14 +823,14 @@
 
     function loadLogs() {
         const tableBody = document.getElementById('logs-table-body');
-        tableBody.innerHTML = `<tr><td colspan="8" class="loading-text">🔄 Syncing database tables...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" class="loading-text">🔄 Syncing database tables...</td></tr>`;
         
         fetch(CLOUD_API_URL)
         .then(res => res.json())
         .then(dataArray => {
             tableBody.innerHTML = '';
             if(!Array.isArray(dataArray) || dataArray.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No entries found.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No entries found.</td></tr>`;
                 return;
             }
             [...dataArray].reverse().forEach(row => {
@@ -842,6 +844,7 @@
                         <td><span class="badge" style="background:#64748b">${row.sbu || '-'}</span></td>
                         <td><strong>${row.line || '-'}</strong></td>
                         <td>${row.section || '-'}</td>
+                        <td style="font-weight: 500; color: #475569;">${row.subcategory || '-'}</td>
                         <td>${row.question || '-'}</td>
                         <td><span class="badge ${itemBadge}" style="${backgroundRule}">${row.status || '-'}</span></td>
                         <td><span class="${row.status === 'Fail' ? 'comment-text' : ''}">${row.comment || '-'}</span></td>
@@ -850,7 +853,7 @@
             });
         })
         .catch(err => {
-            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--danger);">Endpoint Sync Exception: ${err.message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--danger);">Endpoint Sync Exception: ${err.message}</td></tr>`;
         });
     }
 
@@ -956,7 +959,7 @@
 
     function clearAllData() {
         alert('Visual cleared. The underlying structural files inside your Google Sheet are unmodified.');
-        document.getElementById('logs-table-body').innerHTML = `<tr><td colspan="8" style="text-align:center; color:#64748b;">Cache empty. Change tabs to query cloud server database.</td></tr>`;
+        document.getElementById('logs-table-body').innerHTML = `<tr><td colspan="9" style="text-align:center; color:#64748b;">Cache empty. Change tabs to query cloud server database.</td></tr>`;
     }
 
     function downloadBulkDailyReport() {
@@ -1016,11 +1019,12 @@
                 <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
                     <thead>
                         <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 12%;">Line ID</th>
-                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 12%;">Section</th>
-                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 48%;">Assessment Checkpoint Metric</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 10%;">Line ID</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 10%;">Section</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 15%;">Sub Section</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 40%;">Assessment Checkpoint Metric</th>
                             <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; width: 10%;">Status</th>
-                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 18%;">Non-Conformance Remarks</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; width: 15%;">Non-Conformance Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1028,6 +1032,7 @@
                             <tr>
                                 <td style="border: 1px solid #e2e8f0; padding: 6px; font-weight: bold;">${row.line}</td>
                                 <td style="border: 1px solid #e2e8f0; padding: 6px;">${row.section}</td>
+                                <td style="border: 1px solid #e2e8f0; padding: 6px; font-weight: 600;">${row.subcategory || '-'}</td>
                                 <td style="border: 1px solid #e2e8f0; padding: 6px;">${row.question}</td>
                                 <td style="border: 1px solid #e2e8f0; padding: 6px; text-align: center; font-weight: bold; color: ${row.status === 'Pass' ? '#16a34a' : (row.status === 'Fail' ? '#dc2626' : '#64748b')}">${row.status}</td>
                                 <td style="border: 1px solid #e2e8f0; padding: 6px; font-style: italic; color: #dc2626;">${row.comment || '-'}</td>
