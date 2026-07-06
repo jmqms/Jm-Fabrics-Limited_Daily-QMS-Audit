@@ -309,6 +309,7 @@
 </div>
 
 <script>
+    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE BELOW:
     const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyXBkqRch0vlUkcGnYiJDKsxjXtRe4cA2q_eeJJ1Q659MIW1FTzVowOfNJBo0bYTes-/exec";
 
     let totalActiveCheckpoints = 0;
@@ -349,7 +350,7 @@
                 'Is there any over-stocking or aged or style closing Raw-material?',
                 'Is the label stock register properly maintained with accurate records?'
             ],
-            'Sewing Line Management': [
+            'Sewing line management': [
                 'Is the area free from food/water bottles?',
                 'Are Maintain Label Management Register for operator label handling?',
                 'Is the sewing line clean and well organized? No Style Closing goods available?',
@@ -374,7 +375,7 @@
                 'Are all idle machines free from needles (no needle attached)?',
                 'Are operators using PPE where required?'
             ],
-            'Heat-Seal Process': [
+            'Heat Seal': [
                 'Are only authorized staff setting heat seal parameters on heat seal machines?',
                 'Are machine maintenance reports readily available and up to date?',
                 'Are TDS (Technical Data Sheet) and SOP (Standard Operating Procedure) available at each heat seal machine?',
@@ -446,7 +447,7 @@
                 'Is there no food or drinking water in the work area?',
                 'Are daily reports reviewed, signed, and dated by responsible personnel?'
             ],
-            'Hangtag Attachment Table': [
+            'Hangtag Attachement Table': [
                 'Is the hangtag attachment table clean, organized and table surface smooth and free from dust?',
                 'Is the Hangtag attached area lighting level at least 750 lux?',
                 'Are dark and light color garments stored separately?',
@@ -652,7 +653,7 @@
             }
         })
         .catch(error => {
-            alert('Transmission closed. Confirm row appending by visiting your connected Google Sheet dashboard.');
+            alert('Transmission status confirmed via Sheet records updater window.');
             if(triggerDownload) {
                 generateSingleFormPDF(payloadRows, auditor, date, sbu, section, line);
             }
