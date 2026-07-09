@@ -310,7 +310,6 @@
 </div>
 
 <script>
-    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE BELOW:
     const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyXBkqRch0vlUkcGnYiJDKsxjXtRe4cA2q_eeJJ1Q659MIW1FTzVowOfNJBo0bYTes-/exec";
 
     let totalActiveCheckpoints = 0;
@@ -762,7 +761,6 @@
                 if (row.status === 'Pass') performanceMatrix[groupToken].pass++;
                 else if (row.status === 'Fail') performanceMatrix[groupToken].fail++;
 
-                // Track with added subcategory structural fields
                 const questionToken = `${row.line}|||${row.section}|||${row.subcategory}|||${row.question}`;
                 if (!structuralFailMap[questionToken]) { structuralFailMap[questionToken] = { total: 0, fail: 0 }; }
                 structuralFailMap[questionToken].total++;
@@ -855,6 +853,8 @@
     }
 
     function initAnalysisFilters() {
+        const sectionSelector = document.getElementById('analysis-section-filter');
+        sectionSelector.value = "Sewing"; 
         syncAnalysisCategories();
     }
 
@@ -868,6 +868,7 @@
                 subCategorySelector.innerHTML += `<option value="${catKey}">${catKey}</option>`;
             }
         }
+        subCategorySelector.value = ""; 
         syncAnalysisCheckpoints();
     }
 
@@ -889,11 +890,13 @@
         const sbuScope = document.getElementById('analysis-sbu-filter').value;
         const analyticStart = document.getElementById('analysis-start-date').value;
         const analyticEnd = document.getElementById('analysis-end-date').value;
+        const selectedSection = document.getElementById('analysis-section-filter').value;
+        const selectedSubSection = document.getElementById('analysis-subsection-filter').value;
         const exactTargetQuestion = document.getElementById('analysis-checkpoint-filter').value;
         const mainAnalyticsTable = document.getElementById('analysis-table-body');
 
         if(!exactTargetQuestion) {
-            mainAnalyticsTable.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Select parameters to run matrix evaluation.</td></tr>`;
+            mainAnalyticsTable.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Select parameters and choose a target checkpoint point to load tracking analytics.</td></tr>`;
             return;
         }
         mainAnalyticsTable.innerHTML = `<tr><td colspan="5" class="loading-text">🔄 Querying dataset records...</td></tr>`;
@@ -909,7 +912,10 @@
 
             const verifiedTargetArray = cloudCache.filter(itemRow => {
                 if (sbuScope !== 'ALL' && itemRow.sbu !== sbuScope) return false;
+                if (itemRow.section !== selectedSection) return false;
+                if (itemRow.subcategory !== selectedSubSection) return false;
                 if (itemRow.question !== exactTargetQuestion) return false;
+                
                 if (itemRow.date) {
                     const rowParsedDate = new Date(itemRow.date);
                     if (targetMinDate && rowParsedDate < targetMinDate) return false;
@@ -921,10 +927,12 @@
             let contextualAggregation = {};
             verifiedTargetArray.forEach(item => {
                 if(!contextualAggregation[item.line]) { 
-                    contextualAggregation[item.line] = { totalChecked: 0, nonConformances: 0, lineSection: item.section }; 
+                    contextualAggregation[item.line] = { datesChecked: new Set(), nonConformances: 0, lineSection: item.section }; 
                 }
-                contextualAggregation[item.line].totalChecked++;
-                if(item.status === 'Fail') { contextualAggregation[item.line].nonConformances++; }
+                contextualAggregation[item.line].datesChecked.add(item.date);
+                if(item.status === 'Fail') { 
+                    contextualAggregation[item.line].nonConformances++; 
+                }
             });
 
             mainAnalyticsTable.innerHTML = '';
@@ -932,21 +940,22 @@
             for(let keyLineID in contextualAggregation) {
                 matrixDataExists = true;
                 let activeRecord = contextualAggregation[keyLineID];
+                let totalUniqueDays = activeRecord.datesChecked.size;
                 let trackingStatusFlag = activeRecord.nonConformances > 0 ? 
-                    `<span class="badge fail">🚨 High Risk Action Required</span>` : `<span class="badge pass">🟢 Stable</span>`;
+                    `<span class="badge fail">🚨 Action Required</span>` : `<span class="badge pass">🟢 Stable</span>`;
                 
                 mainAnalyticsTable.innerHTML += `
                     <tr>
                         <td><strong>${keyLineID}</strong></td>
                         <td>${activeRecord.lineSection}</td>
-                        <td>${activeRecord.totalChecked} Days Audited</td>
+                        <td>${totalUniqueDays} Days Audited</td>
                         <td style="color:${activeRecord.nonConformances > 0 ? 'var(--danger)':'green'}; font-weight:bold;">${activeRecord.nonConformances} Days Problem Identified</td>
                         <td>${trackingStatusFlag}</td>
                     </tr>
                 `;
             }
             if(!matrixDataExists) {
-                mainAnalyticsTable.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No matching entry data matching criteria parameters.</td></tr>`;
+                mainAnalyticsTable.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No matching records found for the specified operational parameters.</td></tr>`;
             }
         })
         .catch(err => {
