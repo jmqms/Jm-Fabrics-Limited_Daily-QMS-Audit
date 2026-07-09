@@ -1045,11 +1045,11 @@
             let contextualAggregation = {};
             verifiedTargetArray.forEach(item => {
                 if(!contextualAggregation[item.line]) { 
-                    contextualAggregation[item.line] = { datesChecked: new Set(), nonConformances: 0, lineSection: item.section }; 
+                    contextualAggregation[item.line] = { datesChecked: new Set(), failDates: new Set(), lineSection: item.section }; 
                 }
                 contextualAggregation[item.line].datesChecked.add(item.date);
                 if(item.status === 'Fail') { 
-                    contextualAggregation[item.line].nonConformances++; 
+                    contextualAggregation[item.line].failDates.add(item.date);
                 }
             });
 
@@ -1059,7 +1059,8 @@
                 matrixDataExists = true;
                 let activeRecord = contextualAggregation[keyLineID];
                 let totalUniqueDays = activeRecord.datesChecked.size;
-                let trackingStatusFlag = activeRecord.nonConformances > 0 ? 
+                let nonConformanceDays = activeRecord.failDates.size;
+                let trackingStatusFlag = nonConformanceDays > 0 ? 
                     `<span class="badge fail">🚨 Action Required</span>` : `<span class="badge pass">🟢 Stable</span>`;
                 
                 mainAnalyticsTable.innerHTML += `
@@ -1067,7 +1068,7 @@
                         <td><strong>${keyLineID}</strong></td>
                         <td>${activeRecord.lineSection}</td>
                         <td>${totalUniqueDays} Days Audited</td>
-                        <td style="color:${activeRecord.nonConformances > 0 ? 'var(--danger)':'green'}; font-weight:bold;">${activeRecord.nonConformances} Days Problem Identified</td>
+                        <td style="color:${nonConformanceDays > 0 ? 'var(--danger)':'green'}; font-weight:bold;">${nonConformanceDays} Days Problem Identified</td>
                         <td>${trackingStatusFlag}</td>
                     </tr>
                 `;
